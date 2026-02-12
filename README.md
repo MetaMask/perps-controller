@@ -40,6 +40,12 @@ perps-controller (this repo)
 yarn add @metamask/perps-controller
 ```
 
+or
+
+```bash
+npm install @metamask/perps-controller
+```
+
 ## Syncing from Mobile
 
 ### First-time setup
@@ -64,6 +70,7 @@ yarn sync:changelog
 ```
 
 The sync script:
+
 1. Copies `app/controllers/perps/*` from mobile into `src/`, excluding tests and mocks
 2. Validates no mobile-specific imports (`../../` paths) exist in the synced code
 3. Updates `.sync-state.json` with the mobile commit hash, branch, and timestamp

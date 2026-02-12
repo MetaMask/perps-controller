@@ -49,8 +49,7 @@
     "prepack": "./scripts/prepack.sh",
     "sync": "./scripts/sync-from-mobile.sh",
     "sync:changelog": "./scripts/extract-mobile-changelog.sh",
-    "test": "vitest && attw --pack",
-    "test:watch": "vitest --watch"
+    "test": "attw --pack"
   },
   "dependencies": {
     "@metamask/abi-utils": "^3.0.0",
@@ -63,17 +62,6 @@
     "bignumber.js": "^9.1.2",
     "reselect": "^5.1.1",
     "uuid": "^8.3.2"
-  },
-  "peerDependencies": {
-    "@metamask/account-tree-controller": "^4.0.0",
-    "@metamask/bridge-controller": "^66.0.0",
-    "@metamask/keyring-api": "^21.0.0",
-    "@metamask/keyring-controller": "^25.0.0",
-    "@metamask/keyring-internal-api": "^10.0.0",
-    "@metamask/network-controller": "^29.0.0",
-    "@metamask/profile-sync-controller": "^27.0.0",
-    "@metamask/remote-feature-flag-controller": "^4.0.0",
-    "@metamask/transaction-controller": "^62.12.0"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.15.3",
@@ -118,6 +106,17 @@
     "vite": "^6.4.1",
     "vitest": "^3.0.7"
   },
+  "peerDependencies": {
+    "@metamask/account-tree-controller": "^4.0.0",
+    "@metamask/bridge-controller": "^66.0.0",
+    "@metamask/keyring-api": "^21.0.0",
+    "@metamask/keyring-controller": "^25.0.0",
+    "@metamask/keyring-internal-api": "^10.0.0",
+    "@metamask/network-controller": "^29.0.0",
+    "@metamask/profile-sync-controller": "^27.0.0",
+    "@metamask/remote-feature-flag-controller": "^4.0.0",
+    "@metamask/transaction-controller": "^62.12.0"
+  },
   "packageManager": "yarn@4.10.3",
   "engines": {
     "node": "^20 || ^22 || >=24"
@@ -132,7 +131,9 @@
       "@metamask/keyring-controller>ethereumjs-wallet>ethereum-cryptography>keccak": false,
       "@metamask/keyring-controller>ethereumjs-wallet>ethereum-cryptography>secp256k1": false,
       "eslint-plugin-import-x>unrs-resolver": false,
-      "vite>esbuild": false
+      "vite>esbuild": false,
+      "vitest>vite-node>vite>esbuild": false,
+      "vitest>vite>esbuild": false
     }
   }
 }
