@@ -1,47 +1,118 @@
-# MetaMask Module Template
+# `@metamask/perps-controller`
 
-This TypeScript module is maintained in the style of the MetaMask team.
+Controller for perpetual trading functionality in MetaMask. This package is a **snapshot** of the PerpsController source from [MetaMask Mobile](https://github.com/MetaMask/metamask-mobile), published as a standalone npm package so that Extension and other clients can consume it.
 
-## Template Instructions
+## Architecture
 
-Follow these instructions when using this template.
+Mobile is the **single source of truth** for the controller code (see [ADR-042](https://github.com/MetaMask/core/blob/main/docs/adr/ADR-042-perps-controller-location.md)). This repository does not contain original source — it syncs from `app/controllers/perps/` in the mobile repo and publishes to npm.
 
-- Update the package name, referenced in the following places:
-  - The `name` field of `package.json`
-  - The README title
-  - The README "Usage" section
-- Update the package description
-  - The package description is referenced at the beginning of the README, and in the `description` field of `package.json`.
-- Update the repository URL, referenced in the following places:
-  - `repository` field of `package.json`
-  - The links in the API section of the README
-- If your project has side effects, update the `sideEffects` field of
-  `package.json` to `true`, or an array of file globs that match the files that
-  have side effects.
-- Update the pull request template (`.github/pull_request_template.md`) to remove the `Examples` section that is specific to this template.
-- Update the README "Usage" section, or remove it if it's not needed.
-- Update the CODEOWNERS file to set the appropriate code owners for the repository (typically one or more engineering teams)
-  - Ensure each referenced team has write permission, and that the engineering team still has write permission.
-- Delete these instructions.
+```
+MetaMask Mobile (source of truth)
+  app/controllers/perps/
+        │
+        │  yarn sync
+        ▼
+perps-controller (this repo)
+  src/  ← snapshot copy (no tests, no mocks)
+        │
+        │  yarn build
+        ▼
+  dist/ → published to npm as @metamask/perps-controller
+```
+
+### What's included
+
+- **PerpsController** — Main controller managing providers, orders, positions, market data
+- **Providers** — HyperLiquid, MYX, and AggregatedPerpsProvider (multi-protocol)
+- **Services** — AccountService, TradingService, MarketDataService, EligibilityService, DepositService, DataLakeService, RewardsIntegrationService, FeatureFlagConfigurationService, and more
+- **Selectors** — Redux state selectors
+- **Types** — Full TypeScript type definitions including `PerpsPlatformDependencies` for dependency injection
+
+### What's NOT included
+
+- Tests (run in mobile repo only)
+- React components, hooks, views (stay in mobile's `app/components/UI/Perps/`)
+- PerpsConnectionManager, PerpsStreamManager (mobile-specific, stay in UI layer)
 
 ## Installation
 
-`yarn add @metamask/metamask-module-template`
+```bash
+yarn add @metamask/perps-controller
+```
 
-or
+## Syncing from Mobile
 
-`npm install @metamask/metamask-module-template`
+### First-time setup
 
-## Usage
+```bash
+git clone https://github.com/MetaMask/perps-controller.git
+cd perps-controller
+yarn install
+```
 
-_Add examples here_
+### Sync workflow
 
-## API
+```bash
+# 1. Sync controller code from mobile
+yarn sync -- --mobile-path /path/to/metamask-mobile
 
-See our documentation:
+# 2. Build (verify TypeScript compilation)
+yarn build
 
-- [Latest published API documentation](https://metamask.github.io/metamask-module-template/latest/)
-- [Latest development API documentation](https://metamask.github.io/metamask-module-template/staging/)
+# 3. Generate changelog draft from mobile commits
+yarn sync:changelog
+```
+
+The sync script:
+1. Copies `app/controllers/perps/*` from mobile into `src/`, excluding tests and mocks
+2. Validates no mobile-specific imports (`../../` paths) exist in the synced code
+3. Updates `.sync-state.json` with the mobile commit hash, branch, and timestamp
+
+### Sync options
+
+```bash
+# Sync from a specific branch
+yarn sync -- --mobile-path /path/to/mobile --branch main
+
+# Generate changelog (reads mobile path from .sync-state.json)
+yarn sync:changelog
+
+# Or specify mobile path explicitly
+yarn sync:changelog -- --mobile-path /path/to/mobile
+```
+
+## Development
+
+### Why a snapshot repo?
+
+Metro's babel transformer skips `react-refresh/babel` instrumentation for any path containing `node_modules`. With the controller code living in mobile's `app/controllers/perps/` and aliased via `extraNodeModules` in `metro.config.js`, developers get true component-level Fast Refresh with React state preservation. A `cp to node_modules` workflow would lose this, causing full JS reloads and lost state — a significant DX cost when iterating on trading logic with open positions, WebSocket connections, and filled order forms.
+
+### Linting
+
+ESLint is configured to **ignore `src/`** — linting is done in the mobile repo where the source of truth lives. Only project config files (scripts, configs) are linted here.
+
+### Build
+
+```bash
+yarn build        # TypeScript compilation via ts-bridge
+```
+
+### Validation checks
+
+After syncing, verify:
+
+```bash
+# Build succeeds
+yarn build
+
+# No mobile-specific imports leaked through
+grep -r "from '../../" src/
+# (should return nothing)
+
+# No test files synced
+find src -name "*.test.ts"
+# (should return nothing)
+```
 
 ## Contributing
 
@@ -50,48 +121,18 @@ See our documentation:
 - Install the current LTS version of [Node.js](https://nodejs.org)
   - If you are using [nvm](https://github.com/creationix/nvm#installation) (recommended) running `nvm install` will install the latest version and running `nvm use` will automatically choose the right node version for you.
 - Install [Yarn](https://yarnpkg.com) v4 via [Corepack](https://github.com/nodejs/corepack?tab=readme-ov-file#how-to-install)
-- Run `yarn install` to install dependencies and run any required post-install scripts
+- Run `yarn install` to install dependencies
 
-### Testing and Linting
+### Making changes to the controller
 
-Run `yarn test` to run the tests once. To run tests on file changes, run `yarn test:watch`.
+**Do not edit files in `src/` directly.** Changes must be made in the mobile repo and synced here. This ensures mobile remains the single source of truth.
 
-Run `yarn lint` to run the linter, or run `yarn lint:fix` to run the linter and fix any automatically fixable issues.
+1. Make changes in `metamask-mobile/app/controllers/perps/`
+2. Verify in mobile: `npx eslint app/controllers/perps/` and `yarn jest app/controllers/perps/ --no-coverage`
+3. Sync here: `yarn sync -- --mobile-path /path/to/mobile`
+4. Build: `yarn build`
+5. Update CHANGELOG.md (use `yarn sync:changelog` for a draft)
 
 ### Release & Publishing
 
-The project follows the same release process as the other libraries in the MetaMask organization. The GitHub Actions [`action-create-release-pr`](https://github.com/MetaMask/action-create-release-pr) and [`action-publish-release`](https://github.com/MetaMask/action-publish-release) are used to automate the release process; see those repositories for more information about how they work.
-
-1. Choose a release version.
-
-   - The release version should be chosen according to SemVer. Analyze the changes to see whether they include any breaking changes, new features, or deprecations, then choose the appropriate SemVer version. See [the SemVer specification](https://semver.org/) for more information.
-
-2. If this release is backporting changes onto a previous release, then ensure there is a major version branch for that version (e.g. `1.x` for a `v1` backport release).
-
-   - The major version branch should be set to the most recent release with that major version. For example, when backporting a `v1.0.2` release, you'd want to ensure there was a `1.x` branch that was set to the `v1.0.1` tag.
-
-3. Trigger the [`workflow_dispatch`](https://docs.github.com/en/actions/reference/events-that-trigger-workflows#workflow_dispatch) event [manually](https://docs.github.com/en/actions/managing-workflow-runs/manually-running-a-workflow) for the `Create Release Pull Request` action to create the release PR.
-
-   - For a backport release, the base branch should be the major version branch that you ensured existed in step 2. For a normal release, the base branch should be the main branch for that repository (which should be the default value).
-   - This should trigger the [`action-create-release-pr`](https://github.com/MetaMask/action-create-release-pr) workflow to create the release PR.
-
-4. Update the changelog to move each change entry into the appropriate change category ([See here](https://keepachangelog.com/en/1.0.0/#types) for the full list of change categories, and the correct ordering), and edit them to be more easily understood by users of the package.
-
-   - Generally any changes that don't affect consumers of the package (e.g. lockfile changes or development environment changes) are omitted. Exceptions may be made for changes that might be of interest despite not having an effect upon the published package (e.g. major test improvements, security improvements, improved documentation, etc.).
-   - Try to explain each change in terms that users of the package would understand (e.g. avoid referencing internal variables/concepts).
-   - Consolidate related changes into one change entry if it makes it easier to explain.
-   - Run `yarn auto-changelog validate --rc` to check that the changelog is correctly formatted.
-
-5. Review and QA the release.
-
-   - If changes are made to the base branch, the release branch will need to be updated with these changes and review/QA will need to restart again. As such, it's probably best to avoid merging other PRs into the base branch while review is underway.
-
-6. Squash & Merge the release.
-
-   - This should trigger the [`action-publish-release`](https://github.com/MetaMask/action-publish-release) workflow to tag the final release commit and publish the release on GitHub.
-
-7. Publish the release on npm.
-
-   - Wait for the `publish-release` GitHub Action workflow to finish. This should trigger a second job (`publish-npm`), which will wait for a run approval by the [`npm publishers`](https://github.com/orgs/MetaMask/teams/npm-publishers) team.
-   - Approve the `publish-npm` job (or ask somebody on the npm publishers team to approve it for you).
-   - Once the `publish-npm` job has finished, check npm to verify that it has been published.
+The project follows the same release process as other MetaMask packages. See the [MetaMask release process](https://github.com/MetaMask/action-create-release-pr) for details.
