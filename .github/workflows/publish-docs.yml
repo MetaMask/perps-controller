@@ -22,7 +22,7 @@ jobs:
         if: ${{ inputs.destination_dir == '' }}
         run: exit 1
       - name: Checkout and setup environment
-        uses: MetaMask/action-checkout-and-setup@v2
+        uses: MetaMask/action-checkout-and-setup@29e23b68b9b868d31805d1adce431cb35fd2de83 # v2.0.1
         with:
           is-high-risk-environment: true
       - name: Run build script
